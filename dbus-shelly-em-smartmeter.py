@@ -104,7 +104,7 @@ class DbusShellyemService:
     accessType = config['DEFAULT']['AccessType']
 
     if accessType == 'OnPremise':
-        URL = "http://%s:%s@%s/status" % (config['ONPREMISE']['Username'], config['ONPREMISE']['Password'], config['ONPREMISE']['Host'])
+        URL = "http://%s:%s@%s/rpc/Shelly.GetStatus" % (config['ONPREMISE']['Username'], config['ONPREMISE']['Password'], config['ONPREMISE']['Host'])
         URL = URL.replace(":@", "")
     else:
         raise ValueError("AccessType %s is not supported" % (config['DEFAULT']['AccessType']))
@@ -142,7 +142,7 @@ class DbusShellyemService:
         meter_data = self._getShellyData()
 
         # Check if Shelly EM data is available
-        if not meter_data or 'emeters' not in meter_data:
+        if not meter_data or 'switch:0' not in meter_data:
             logging.warning("No data received from Shelly EM. Skipping this update cycle.")
             return True  # Skip the update if no data is available
 
@@ -155,17 +155,11 @@ class DbusShellyemService:
         logging.debug(f"MeterNo: {MeterNo}")
 
         # Extract values from meter data
-        voltage = meter_data['emeters'][MeterNo]['voltage']
-        power = meter_data['emeters'][MeterNo]['power']
-        total_energy = meter_data['emeters'][MeterNo]['total'] / 1000
-        total_returned = meter_data['emeters'][MeterNo]['total_returned'] / 1000
-
-        # Calculate current (handle division by zero)
-        if voltage == 0:
-            logging.warning("Voltage is 0, setting current to 0 to avoid division by zero.")
-            current = 0
-        else:
-            current = power / voltage
+        voltage = meter_data['switch:0']['voltage']
+        power = meter_data['switch:0']['power']
+        current = meter_data['switch:0']['current']
+        total_energy = meter_data['switch:0']['aenergy']['total'] / 1000
+        total_returned = meter_data['switch:0']['ret_aenergy']['total'] / 1000
 
         # Log the extracted values
         logging.debug(f"Voltage: {voltage}, Power: {power}, Current: {current}")
@@ -217,7 +211,7 @@ def main():
   #configure logging
   logging.basicConfig(      format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S',
-                            level=logging.INFO,
+                            level=logging.DEBUG,
                             handlers=[
                                 logging.FileHandler("%s/current.log" % (os.path.dirname(os.path.realpath(__file__)))),
                                 logging.StreamHandler()
